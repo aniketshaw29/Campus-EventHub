@@ -10,32 +10,32 @@ A production-grade microservices application built with Java + Spring Boot for m
                           ┌─────────────────────────────────────┐
                           │           API Gateway                │
                           │       (Spring Cloud Gateway)         │
-                          │            Port: 8080                │
+                          │            Port: 4069                │
                           └──────────────┬──────────────────────┘
                                          │
               ┌──────────────────────────┼──────────────────────────┐
               │                          │                           │
    ┌──────────▼────────┐    ┌────────────▼──────────┐  ┌───────────▼──────────┐
    │   Event Service   │    │ Registration Service  │  │   Venue Service      │
-   │     Port: 8081    │    │     Port: 8082        │  │   Port: 8083         │
+   │     Port: 4071    │    │     Port: 4072        │  │   Port: 4073         │
    └───────────────────┘    └───────────────────────┘  └──────────────────────┘
    ┌───────────────────┐    ┌───────────────────────┐  ┌──────────────────────┐
    │Attendance Service │    │ Ticket/QR Service     │  │ Notification Service │
-   │     Port: 8084    │    │     Port: 8085        │  │   Port: 8086         │
+   │     Port: 4074    │    │     Port: 4075        │  │   Port: 4076         │
    └───────────────────┘    └───────────────────────┘  └──────────────────────┘
    ┌───────────────────┐    ┌───────────────────────┐  ┌──────────────────────┐
    │Certificate Service│    │  Feedback Service     │  │ Leaderboard Service  │
-   │     Port: 8087    │    │     Port: 8088        │  │   Port: 8089         │
+   │     Port: 4077    │    │     Port: 4078        │  │   Port: 4079         │
    └───────────────────┘    └───────────────────────┘  └──────────────────────┘
    ┌───────────────────┐    ┌───────────────────────┐  ┌──────────────────────┐
    │Announcement Svc   │    │ Resource Upload Svc   │  │ Sponsor Mgmt Service │
-   │     Port: 8090    │    │     Port: 8091        │  │   Port: 8092         │
+   │     Port: 4080    │    │     Port: 4081        │  │   Port: 4082         │
    └───────────────────┘    └───────────────────────┘  └──────────────────────┘
 
                           ┌─────────────────────────────────────┐
                           │         Eureka Server                │
                           │       (Service Registry)             │
-                          │            Port: 8761                │
+                          │            Port: 4070                │
                           └─────────────────────────────────────┘
 
                           ┌─────────────────────────────────────┐
@@ -51,20 +51,20 @@ A production-grade microservices application built with Java + Spring Boot for m
 
 | # | Service | Port | Responsibility | Database |
 |---|---------|------|----------------|----------|
-| 1 | Event Service | 8081 | Create/manage events | `event_db` |
-| 2 | Registration Service | 8082 | Register students, track attendees | `registration_db` |
-| 3 | Venue Service | 8083 | Manage venues, check availability | `venue_db` |
-| 4 | Attendance Service | 8084 | Mark attendance, validate entry | `attendance_db` |
-| 5 | Ticket/QR Service | 8085 | Generate & validate QR passes | `ticket_db` |
-| 6 | Notification Service | 8086 | Send confirmations, reminders, alerts | `notification_db` |
-| 7 | Certificate Service | 8087 | Generate & verify certificates | `certificate_db` |
-| 8 | Feedback Service | 8088 | Ratings, comments, summaries | `feedback_db` |
-| 9 | Leaderboard Service | 8089 | Rankings, competition results | `leaderboard_db` |
-| 10 | Announcement Service | 8090 | Event announcements, broadcasts | `announcement_db` |
-| 11 | Resource Upload Service | 8091 | File uploads for posters, notes | `resource_db` |
-| 12 | Sponsor Service | 8092 | Sponsor details, tiers | `sponsor_db` |
-| — | API Gateway | 8080 | Routing, load balancing | — |
-| — | Eureka Server | 8761 | Service discovery | — |
+| 1 | Event Service | 4071 | Create/manage events | `event_db` |
+| 2 | Registration Service | 4072 | Register students, track attendees | `registration_db` |
+| 3 | Venue Service | 4073 | Manage venues, check availability | `venue_db` |
+| 4 | Attendance Service | 4074 | Mark attendance, validate entry | `attendance_db` |
+| 5 | Ticket/QR Service | 4075 | Generate & validate QR passes | `ticket_db` |
+| 6 | Notification Service | 4076 | Send confirmations, reminders, alerts | `notification_db` |
+| 7 | Certificate Service | 4077 | Generate & verify certificates | `certificate_db` |
+| 8 | Feedback Service | 4078 | Ratings, comments, summaries | `feedback_db` |
+| 9 | Leaderboard Service | 4079 | Rankings, competition results | `leaderboard_db` |
+| 10 | Announcement Service | 4080 | Event announcements, broadcasts | `announcement_db` |
+| 11 | Resource Upload Service | 4081 | File uploads for posters, notes | `resource_db` |
+| 12 | Sponsor Service | 4082 | Sponsor details, tiers | `sponsor_db` |
+| — | API Gateway | 4069 | Routing, load balancing | — |
+| — | Eureka Server | 4070 | Service discovery | — |
 
 ---
 
@@ -157,8 +157,8 @@ mvn clean package -DskipTests
 docker-compose up --build
 
 # Access points
-# API Gateway:   http://localhost:8080
-# Eureka UI:     http://localhost:8761
+# API Gateway:   http://localhost:4069
+# Eureka UI:     http://localhost:4070
 # RabbitMQ UI:   http://localhost:15672  (guest/guest)
 ```
 
@@ -172,7 +172,7 @@ kubectl apply -f k8s/
 kubectl get pods -n campus-eventhub
 
 # Port-forward gateway
-kubectl port-forward svc/api-gateway 8080:8080 -n campus-eventhub
+kubectl port-forward svc/api-gateway 4069:4069 -n campus-eventhub
 ```
 
 ---

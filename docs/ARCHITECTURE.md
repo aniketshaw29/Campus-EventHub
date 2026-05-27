@@ -413,20 +413,20 @@ spring:
 
 | Service | Port |
 |---------|------|
-| API Gateway | 8080 |
-| Eureka Server | 8761 |
-| Event Service | 8081 |
-| Registration Service | 8082 |
-| Venue Service | 8083 |
-| Attendance Service | 8084 |
-| Ticket Service | 8085 |
-| Notification Service | 8086 |
-| Certificate Service | 8087 |
-| Feedback Service | 8088 |
-| Leaderboard Service | 8089 |
-| Announcement Service | 8090 |
-| Resource Service | 8091 |
-| Sponsor Service | 8092 |
+| API Gateway | 4069 |
+| Eureka Server | 4070 |
+| Event Service | 4071 |
+| Registration Service | 4072 |
+| Venue Service | 4073 |
+| Attendance Service | 4074 |
+| Ticket Service | 4075 |
+| Notification Service | 4076 |
+| Certificate Service | 4077 |
+| Feedback Service | 4078 |
+| Leaderboard Service | 4079 |
+| Announcement Service | 4080 |
+| Resource Service | 4081 |
+| Sponsor Service | 4082 |
 | RabbitMQ AMQP | 5672 |
 | RabbitMQ Management | 15672 |
-| PostgreSQL (per service) | 5432–5443 |
+| PostgreSQL (per service) | 5480–5491 |

@@ -43,7 +43,7 @@ eureka-server/
     └── resources/application.yml
 ```
 - `@EnableEurekaServer`
-- Runs on port `8761`
+- Runs on port `4070`
 - Standalone mode (does not register itself)
 
 #### 1.3 API Gateway (`api-gateway/`)
@@ -55,15 +55,15 @@ api-gateway/
     └── resources/application.yml
 ```
 - Spring Cloud Gateway + Eureka client
-- Runs on port `8080`
+- Runs on port `4069`
 - Route rules: `/api/events/**` → `event-service`, etc.
 - Global CORS filter
 
 ### Test Criteria
 - [ ] `mvn clean package` succeeds for both modules
-- [ ] Eureka UI at `http://localhost:8761` loads
+- [ ] Eureka UI at `http://localhost:4070` loads
 - [ ] API Gateway starts and registers in Eureka
-- [ ] `http://localhost:8761` shows `API-GATEWAY` in registered instances
+- [ ] `http://localhost:4070` shows `API-GATEWAY` in registered instances
 
 ---
 
@@ -123,8 +123,8 @@ GET    /api/venues/event/{eventId}    → Get venue for an event
 
 ### Test Criteria
 - [ ] Both services register in Eureka
-- [ ] Create event via Gateway: `POST http://localhost:8080/api/events`
-- [ ] Create venue via Gateway: `POST http://localhost:8080/api/venues`
+- [ ] Create event via Gateway: `POST http://localhost:4069/api/events`
+- [ ] Create venue via Gateway: `POST http://localhost:4069/api/venues`
 - [ ] Book venue for event — conflict detection rejects double-booking
 - [ ] PostgreSQL DBs `event_db` and `venue_db` have correct tables
 - [ ] All CRUD endpoints return correct HTTP status codes
@@ -514,14 +514,14 @@ spring:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+      defaultZone: ${EUREKA_URL:http://localhost:4070/eureka}
 ```
 
 ### Test Criteria
 - [ ] `docker-compose up --build` starts all containers without error
-- [ ] All 14 services show `UP` in Eureka at `http://localhost:8761`
+- [ ] All 14 services show `UP` in Eureka at `http://localhost:4070`
 - [ ] RabbitMQ UI accessible at `http://localhost:15672`
-- [ ] Full demo flow works end-to-end via `http://localhost:8080`
+- [ ] Full demo flow works end-to-end via `http://localhost:4069`
 - [ ] Stopping `event-service` container → registration returns circuit breaker response
 - [ ] Restarting `event-service` container → it re-registers in Eureka, system recovers
 

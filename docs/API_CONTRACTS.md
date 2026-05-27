@@ -1,6 +1,6 @@
 # API Contracts
 
-All endpoints are accessible through the API Gateway at `http://localhost:8080`.
+All endpoints are accessible through the API Gateway at `http://localhost:4069`.
 
 ---
 
