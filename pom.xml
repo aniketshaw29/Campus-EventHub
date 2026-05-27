@@ -31,7 +31,9 @@
         <!-- Phase 4: Async messaging -->
         <module>ticket-service</module>
         <module>notification-service</module>
-        <!-- Phase 5: attendance-service, certificate-service -->
+        <!-- Phase 5: Attendance & Certificates -->
+        <module>attendance-service</module>
+        <module>certificate-service</module>
         <!-- Phase 6: feedback-service, leaderboard-service, announcement-service -->
         <!-- Phase 7: resource-service, sponsor-service -->
     </modules>

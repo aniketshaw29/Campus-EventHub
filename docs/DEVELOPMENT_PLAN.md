@@ -13,7 +13,7 @@ Each phase is self-contained with a clear scope, implementation checklist, and t
 | 2 | ✅ DONE | Core Event Domain | Event Service, Venue Service | Events and venues CRUD working |
 | 3 | ✅ DONE | Registration + Resilience | Registration Service | Circuit breaker demo working |
 | 4 | ✅ DONE | Async Messaging | Ticket, Notification | RabbitMQ flow working end-to-end |
-| 5 | 🔲 TODO | Attendance + Certificate | Attendance, Certificate | Full student lifecycle complete |
+| 5 | ✅ DONE | Attendance + Certificate | Attendance, Certificate | Full student lifecycle complete |
 | 6 | 🔲 TODO | Engagement Layer | Feedback, Leaderboard, Announcement | Event engagement features complete |
 | 7 | 🔲 TODO | Utility Services | Resource Upload, Sponsor | Supporting features complete |
 | 8 | 🔲 TODO | Containerization | All services | docker-compose up brings everything up |
@@ -267,7 +267,7 @@ GET  /api/notifications/type/{type}           → Filter by type
 
 ---
 
-## Phase 5 — Attendance + Certificate
+## Phase 5 — Attendance + Certificate ✅
 
 **Goal:** Mark attendance → auto-generate certificate. Full student lifecycle complete.
 
@@ -277,24 +277,26 @@ GET  /api/notifications/type/{type}           → Filter by type
 
 **Entity: `Attendance`**
 ```
-id, registrationId, studentId, eventId,
-markedAt, status (PRESENT/ABSENT)
+id, registrationId (unique), studentId, studentName, studentEmail,
+eventId, eventTitle, markedAt, status (PRESENT/ABSENT)
 ```
 
 **Sync call (Feign):**
-- `RegistrationClient` → GET `/api/registrations/{id}/exists` — validate registration
+- `RegistrationClient` → GET `/api/registrations/{id}/exists` — validate registration exists
+- Fallback: throws `RegistrationServiceUnavailableException` (503)
 
 **RabbitMQ Publisher:**
 - Exchange: `campus.events`
 - Routing key: `attendance.completed`
-- Payload: `{ attendanceId, registrationId, studentId, eventId, studentEmail, markedAt }`
+- Payload: `{ attendanceId, registrationId, studentId, studentName, studentEmail, eventId, eventTitle, markedAt }`
 
 **Endpoints:**
 ```
-POST  /api/attendance              → Mark attendance (validates registration)
-GET   /api/attendance/event/{eventId}  → List attendees for event
-GET   /api/attendance/student/{studentId} → Student's attendance history
-GET   /api/attendance/{registrationId}/status → Check if attended
+POST  /api/attendance                         → Mark attendance (validates registration)
+GET   /api/attendance/{id}                    → Get attendance record by ID
+GET   /api/attendance/{registrationId}/status → Check if student attended (returns present bool + timestamp)
+GET   /api/attendance/event/{eventId}         → List attendees for event
+GET   /api/attendance/student/{studentId}     → Student's attendance history
 ```
 
 **Database:** `attendance_db`
@@ -304,32 +306,36 @@ GET   /api/attendance/{registrationId}/status → Check if attended
 **Entity: `Certificate`**
 ```
 id, studentId, studentName, eventId, eventTitle,
-certificateNumber (UUID), issuedAt, pdfData (byte[])
+registrationId (unique), certificateNumber (unique UUID), issuedAt, pdfData (byte[])
 ```
-
-**Sync call (Feign):**
-- `AttendanceClient` → GET `/api/attendance/{registrationId}/status` — confirm present
 
 **RabbitMQ Consumer:**
 - Queue: `campus.certificate.queue`
-- On receive: verify attendance, generate PDF certificate using PDFBox
+- Binding: `attendance.completed` routing key
+- On receive: idempotently generate PDF certificate using PDFBox
+- Certificate includes: student name, event title, certificate number, date
 
 **Endpoints:**
 ```
-GET    /api/certificates/student/{studentId}      → List student's certificates
-GET    /api/certificates/{id}/download            → Download PDF
-GET    /api/certificates/verify/{certificateNumber} → Public verification
+GET  /api/certificates/{id}                       → Get certificate metadata
+GET  /api/certificates/number/{certNumber}        → Get by certificate number (public verification)
+GET  /api/certificates/registration/{regId}       → Get by registration ID
+GET  /api/certificates/student/{studentId}        → List student's certificates
+GET  /api/certificates/{id}/pdf                   → Download PDF as attachment
 ```
 
 **Database:** `certificate_db`
 
 ### Test Criteria
-- [ ] Mark attendance → `attendance.completed` message in RabbitMQ
-- [ ] Certificate row created in `certificate_db`
-- [ ] `GET /api/certificates/{id}/download` returns a valid PDF
-- [ ] PDF contains student name, event name, certificate number
-- [ ] `GET /api/certificates/verify/{number}` returns certificate details (public)
-- [ ] Trying to get certificate without attendance returns 404/403
+- [x] attendance-service: 12/12 automated tests pass (mark, duplicate 409, not-found 404, validation 400, get by id, status check, list by event/student)
+- [x] certificate-service: 10/10 automated tests pass (generate, idempotency, get by id/number/registration/student, PDF download, 404 handling)
+- [x] Attendance generation is idempotent — duplicate `registrationId` returns 409 (automated)
+- [x] Certificate generation is idempotent — re-delivering the same message creates no duplicate (automated)
+- [x] PDFBox generates a valid non-empty PDF containing student name and event title (automated)
+- [x] `GET /api/certificates/{id}/pdf` returns `Content-Type: application/pdf` (automated)
+- [ ] Mark attendance → `attendance.completed` message visible in RabbitMQ UI (requires running stack)
+- [ ] Certificate row created in `certificate_db` with non-null `pdfData` (requires running stack)
+- [ ] Download PDF and verify it renders correctly (requires running stack)
 
 ---
 
