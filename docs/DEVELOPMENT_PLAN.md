@@ -1,0 +1,621 @@
+# Campus EventHub — Phased Development Plan
+
+Each phase is self-contained with a clear scope, implementation checklist, and test criteria.
+**Only move to the next phase after all tests in the current phase pass.**
+
+---
+
+## Phase Overview
+
+| Phase | Focus | Services Built | Key Milestone |
+|-------|-------|----------------|---------------|
+| 1 | Infrastructure Foundation | Eureka, API Gateway | Services discover each other |
+| 2 | Core Event Domain | Event Service, Venue Service | Events and venues CRUD working |
+| 3 | Registration + Resilience | Registration Service | Circuit breaker demo working |
+| 4 | Async Messaging | Ticket, Notification | RabbitMQ flow working end-to-end |
+| 5 | Attendance + Certificate | Attendance, Certificate | Full student lifecycle complete |
+| 6 | Engagement Layer | Feedback, Leaderboard, Announcement | Event engagement features complete |
+| 7 | Utility Services | Resource Upload, Sponsor | Supporting features complete |
+| 8 | Containerization | All services | docker-compose up brings everything up |
+| 9 | Kubernetes | All services | kubectl apply deploys full system |
+| 10 | Frontend Dashboard | React/Thymeleaf | End-to-end demo via UI |
+
+---
+
+## Phase 1 — Infrastructure Foundation
+
+**Goal:** Eureka Server + API Gateway running. All future services will register here.
+
+### What to Build
+
+#### 1.1 Maven Parent POM (`pom.xml`)
+- Java 17, Spring Boot 3.2.x parent
+- Spring Cloud 2023.x BOM
+- Common dependency management (Eureka client, Feign, Resilience4j, RabbitMQ)
+- All service modules listed
+
+#### 1.2 Eureka Server (`eureka-server/`)
+```
+eureka-server/
+├── pom.xml
+└── src/main/
+    ├── java/.../EurekaServerApplication.java
+    └── resources/application.yml
+```
+- `@EnableEurekaServer`
+- Runs on port `8761`
+- Standalone mode (does not register itself)
+
+#### 1.3 API Gateway (`api-gateway/`)
+```
+api-gateway/
+├── pom.xml
+└── src/main/
+    ├── java/.../ApiGatewayApplication.java
+    └── resources/application.yml
+```
+- Spring Cloud Gateway + Eureka client
+- Runs on port `8080`
+- Route rules: `/api/events/**` → `event-service`, etc.
+- Global CORS filter
+
+### Test Criteria
+- [ ] `mvn clean package` succeeds for both modules
+- [ ] Eureka UI at `http://localhost:8761` loads
+- [ ] API Gateway starts and registers in Eureka
+- [ ] `http://localhost:8761` shows `API-GATEWAY` in registered instances
+
+---
+
+## Phase 2 — Core Event Domain
+
+**Goal:** Event and Venue services fully functional with their own databases.
+
+### What to Build
+
+#### 2.1 Event Service (`event-service/`)
+
+**Entity: `Event`**
+```
+id, title, description, date, endDate, category,
+maxCapacity, currentRegistrations, status (UPCOMING/ONGOING/COMPLETED),
+venueId, createdAt, updatedAt
+```
+
+**Endpoints:**
+```
+POST   /api/events               → Create event
+GET    /api/events               → List all events
+GET    /api/events/{id}          → Get event by ID
+GET    /api/events/status/{status} → Filter by status
+PUT    /api/events/{id}          → Update event
+DELETE /api/events/{id}          → Delete event
+PUT    /api/events/{id}/capacity → Increment/decrement registration count
+```
+
+**Database:** `event_db` (PostgreSQL)
+
+#### 2.2 Venue Service (`venue-service/`)
+
+**Entity: `Venue`**
+```
+id, name, location, capacity, type (AUDITORIUM/CLASSROOM/LAB/OUTDOOR),
+facilities, createdAt
+```
+
+**Entity: `VenueBooking`**
+```
+id, venueId, eventId, startTime, endTime, status (BOOKED/CANCELLED)
+```
+
+**Endpoints:**
+```
+POST   /api/venues                    → Create venue
+GET    /api/venues                    → List all venues
+GET    /api/venues/{id}               → Get venue by ID
+GET    /api/venues/{id}/availability  → Check availability for time range
+POST   /api/venues/{id}/book          → Book venue for event
+DELETE /api/venues/bookings/{bookingId} → Cancel booking
+GET    /api/venues/event/{eventId}    → Get venue for an event
+```
+
+**Database:** `venue_db`
+
+### Test Criteria
+- [ ] Both services register in Eureka
+- [ ] Create event via Gateway: `POST http://localhost:8080/api/events`
+- [ ] Create venue via Gateway: `POST http://localhost:8080/api/venues`
+- [ ] Book venue for event — conflict detection rejects double-booking
+- [ ] PostgreSQL DBs `event_db` and `venue_db` have correct tables
+- [ ] All CRUD endpoints return correct HTTP status codes
+
+---
+
+## Phase 3 — Registration Service + Resilience
+
+**Goal:** Students can register for events. Circuit breaker demo works when Event Service is down.
+
+### What to Build
+
+#### 3.1 Registration Service (`registration-service/`)
+
+**Entity: `Registration`**
+```
+id, studentId, studentName, studentEmail, eventId,
+registeredAt, status (ACTIVE/CANCELLED)
+```
+
+**Sync calls (Feign clients):**
+- `EventClient` → GET `/api/events/{id}` — validate event exists and get capacity
+- `VenueClient` → GET `/api/venues/event/{eventId}` — confirm venue is assigned
+
+**Circuit Breaker (Resilience4j):**
+- Fallback when Event Service is unreachable: return `503` with message
+  `"Event service unavailable. Please try again later."`
+- Retry: 3 attempts with 500ms wait
+- Circuit opens after 50% failure rate over 10 calls
+
+**Endpoints:**
+```
+POST   /api/registrations              → Register student for event
+GET    /api/registrations/{id}         → Get registration by ID
+GET    /api/registrations/event/{eventId} → List registrations for event
+GET    /api/registrations/student/{studentId} → Student's registrations
+DELETE /api/registrations/{id}         → Cancel registration
+GET    /api/registrations/{id}/exists  → Check if registration exists (used by other services)
+```
+
+**RabbitMQ Publisher:**
+- Exchange: `campus.events`
+- Routing key: `registration.completed`
+- Payload: `{ registrationId, studentId, studentEmail, eventId, eventTitle, timestamp }`
+
+**Database:** `registration_db`
+
+### Test Criteria
+- [ ] Register student for event — validates event capacity sync
+- [ ] Registration publishes `registration.completed` to RabbitMQ
+- [ ] `GET /api/registrations/event/{id}` returns attendee list
+- [ ] Cancel registration decrements event capacity
+- [ ] **Circuit breaker test:** Stop Event Service → Registration returns fallback 503
+- [ ] **Circuit breaker test:** Restart Event Service → Registrations succeed again
+- [ ] Eureka shows all 3 services (event, venue, registration) registered
+
+---
+
+## Phase 4 — Async Messaging (Ticket + Notification)
+
+**Goal:** After registration, QR pass is generated and notification is sent automatically via RabbitMQ.
+
+### What to Build
+
+#### 4.1 RabbitMQ Configuration
+Establish shared exchange/queue topology (configured in each service):
+```
+Exchange: campus.events (topic exchange)
+
+Queues:
+  campus.ticket.queue       ← routing key: registration.completed
+  campus.notification.queue ← routing keys: registration.completed,
+                                             announcement.created,
+                                             results.published,
+                                             attendance.completed (for cert notification)
+  campus.certificate.queue  ← routing key: attendance.completed
+```
+
+#### 4.2 Ticket Service (`ticket-service/`)
+
+**Entity: `Ticket`**
+```
+id, registrationId, studentId, eventId, qrCode (base64 PNG),
+generatedAt, status (VALID/USED/CANCELLED)
+```
+
+**Sync call (Feign):**
+- `RegistrationClient` → validate registration exists before issuing QR
+
+**RabbitMQ Consumer:**
+- Queue: `campus.ticket.queue`
+- On receive: call ZXing to generate QR code containing JSON payload
+  `{ ticketId, registrationId, studentId, eventId }`, store as base64
+
+**Endpoints:**
+```
+GET  /api/tickets/registration/{registrationId} → Get ticket with QR
+GET  /api/tickets/{id}/validate                 → Validate ticket (used at entry)
+PUT  /api/tickets/{id}/mark-used                → Mark ticket as used
+```
+
+**Database:** `ticket_db`
+
+#### 4.3 Notification Service (`notification-service/`)
+
+**Entity: `Notification`**
+```
+id, recipientId, recipientEmail, type (REGISTRATION/REMINDER/VENUE_CHANGE/ANNOUNCEMENT/RESULT),
+subject, message, sentAt, status (SENT/FAILED)
+```
+
+**RabbitMQ Consumer:**
+- Queue: `campus.notification.queue`
+- Handles: `registration.completed`, `announcement.created`, `results.published`
+- Logs notification to DB (simulated send — log to console or store in DB)
+
+**Endpoints:**
+```
+GET  /api/notifications/student/{studentId}   → Get student's notifications
+GET  /api/notifications/{id}                  → Get notification detail
+GET  /api/notifications/type/{type}           → Filter by type
+```
+
+**Database:** `notification_db`
+
+### Test Criteria
+- [ ] Register a student → verify `registration.completed` message appears in RabbitMQ UI
+- [ ] Ticket row created in `ticket_db` with a non-null `qrCode` field
+- [ ] QR code decodes correctly (use online QR decoder to verify content)
+- [ ] Notification row created in `notification_db`
+- [ ] `GET /api/tickets/registration/{id}` returns QR data
+- [ ] `GET /api/notifications/student/{id}` returns the confirmation notification
+- [ ] RabbitMQ dead-letter queue configured — message isn't lost if consumer crashes
+
+---
+
+## Phase 5 — Attendance + Certificate
+
+**Goal:** Mark attendance → auto-generate certificate. Full student lifecycle complete.
+
+### What to Build
+
+#### 5.1 Attendance Service (`attendance-service/`)
+
+**Entity: `Attendance`**
+```
+id, registrationId, studentId, eventId,
+markedAt, status (PRESENT/ABSENT)
+```
+
+**Sync call (Feign):**
+- `RegistrationClient` → GET `/api/registrations/{id}/exists` — validate registration
+
+**RabbitMQ Publisher:**
+- Exchange: `campus.events`
+- Routing key: `attendance.completed`
+- Payload: `{ attendanceId, registrationId, studentId, eventId, studentEmail, markedAt }`
+
+**Endpoints:**
+```
+POST  /api/attendance              → Mark attendance (validates registration)
+GET   /api/attendance/event/{eventId}  → List attendees for event
+GET   /api/attendance/student/{studentId} → Student's attendance history
+GET   /api/attendance/{registrationId}/status → Check if attended
+```
+
+**Database:** `attendance_db`
+
+#### 5.2 Certificate Service (`certificate-service/`)
+
+**Entity: `Certificate`**
+```
+id, studentId, studentName, eventId, eventTitle,
+certificateNumber (UUID), issuedAt, pdfData (byte[])
+```
+
+**Sync call (Feign):**
+- `AttendanceClient` → GET `/api/attendance/{registrationId}/status` — confirm present
+
+**RabbitMQ Consumer:**
+- Queue: `campus.certificate.queue`
+- On receive: verify attendance, generate PDF certificate using PDFBox
+
+**Endpoints:**
+```
+GET    /api/certificates/student/{studentId}      → List student's certificates
+GET    /api/certificates/{id}/download            → Download PDF
+GET    /api/certificates/verify/{certificateNumber} → Public verification
+```
+
+**Database:** `certificate_db`
+
+### Test Criteria
+- [ ] Mark attendance → `attendance.completed` message in RabbitMQ
+- [ ] Certificate row created in `certificate_db`
+- [ ] `GET /api/certificates/{id}/download` returns a valid PDF
+- [ ] PDF contains student name, event name, certificate number
+- [ ] `GET /api/certificates/verify/{number}` returns certificate details (public)
+- [ ] Trying to get certificate without attendance returns 404/403
+
+---
+
+## Phase 6 — Engagement Layer
+
+**Goal:** Feedback, Leaderboard, and Announcements complete the event engagement features.
+
+### What to Build
+
+#### 6.1 Feedback Service (`feedback-service/`)
+
+**Entity: `Feedback`**
+```
+id, studentId, eventId, rating (1-5), comment, submittedAt
+```
+
+**Entity: `FeedbackSummary` (computed view)**
+```
+eventId, averageRating, totalResponses, ratingDistribution
+```
+
+**Endpoints:**
+```
+POST  /api/feedback              → Submit feedback
+GET   /api/feedback/event/{id}   → All feedback for event
+GET   /api/feedback/event/{id}/summary → Aggregated summary
+GET   /api/feedback/student/{id} → Student's feedback history
+```
+
+**Database:** `feedback_db`
+
+#### 6.2 Leaderboard Service (`leaderboard-service/`)
+
+**Entity: `Result`**
+```
+id, eventId, eventTitle, studentId, studentName,
+position (1st/2nd/3rd), category, points, publishedAt
+```
+
+**RabbitMQ Publisher:**
+- Routing key: `results.published`
+- Payload: `{ eventId, eventTitle, results: [...] }`
+
+**Endpoints:**
+```
+POST  /api/leaderboard/results         → Publish results for event
+GET   /api/leaderboard/event/{eventId} → Rankings for event
+GET   /api/leaderboard/student/{studentId} → Student's achievements
+GET   /api/leaderboard/top             → Overall top performers
+```
+
+**Database:** `leaderboard_db`
+
+#### 6.3 Announcement Service (`announcement-service/`)
+
+**Entity: `Announcement`**
+```
+id, title, content, eventId (nullable), type (GENERAL/EVENT_UPDATE/VENUE_CHANGE/EMERGENCY),
+publishedAt, publishedBy
+```
+
+**RabbitMQ Publisher:**
+- Routing key: `announcement.created`
+- Payload: `{ announcementId, title, content, eventId, type }`
+
+**Endpoints:**
+```
+POST  /api/announcements               → Create announcement (triggers notification)
+GET   /api/announcements               → List all active announcements
+GET   /api/announcements/event/{id}    → Announcements for specific event
+GET   /api/announcements/{id}          → Get announcement detail
+```
+
+**Database:** `announcement_db`
+
+### Test Criteria
+- [ ] Submit feedback → rating stored, summary recalculated
+- [ ] `GET /api/feedback/event/{id}/summary` returns correct average rating
+- [ ] Publish leaderboard results → `results.published` message in RabbitMQ
+- [ ] Notification Service receives and logs results notification
+- [ ] Create announcement → `announcement.created` in RabbitMQ
+- [ ] Notification row created for announcement broadcast
+- [ ] All 12 business services + gateway + eureka visible in Eureka UI
+
+---
+
+## Phase 7 — Utility Services
+
+**Goal:** File uploads and sponsor management round out the platform.
+
+### What to Build
+
+#### 7.1 Resource Upload Service (`resource-service/`)
+
+**Entity: `Resource`**
+```
+id, eventId, uploadedBy, fileName, fileType, fileSize,
+storageKey, uploadedAt, description
+```
+
+**Storage:** Local filesystem in `/uploads/` (Docker volume mounted). Swap for S3 in production.
+
+**Endpoints:**
+```
+POST  /api/resources/upload         → Upload file (multipart/form-data)
+GET   /api/resources/event/{id}     → List resources for event
+GET   /api/resources/{id}/download  → Download file
+DELETE /api/resources/{id}          → Delete resource
+```
+
+**Database:** `resource_db`
+
+#### 7.2 Sponsor Service (`sponsor-service/`)
+
+**Entity: `Sponsor`**
+```
+id, name, logoUrl, website, tier (PLATINUM/GOLD/SILVER/BRONZE),
+contactPerson, contactEmail, description
+```
+
+**Entity: `EventSponsor`**
+```
+id, eventId, sponsorId, contribution, notes
+```
+
+**Endpoints:**
+```
+POST  /api/sponsors                        → Add sponsor
+GET   /api/sponsors                        → List all sponsors
+GET   /api/sponsors/{id}                   → Get sponsor detail
+PUT   /api/sponsors/{id}                   → Update sponsor
+POST  /api/sponsors/{id}/events/{eventId}  → Link sponsor to event
+GET   /api/sponsors/event/{eventId}        → Sponsors for an event
+```
+
+**Database:** `sponsor_db`
+
+### Test Criteria
+- [ ] Upload a file → stored on disk, row in `resource_db`
+- [ ] Download file by ID returns correct file
+- [ ] Create sponsor, link to event, retrieve sponsors for event
+- [ ] File size limit enforced (reject > 10MB)
+
+---
+
+## Phase 8 — Containerization
+
+**Goal:** `docker-compose up` starts the entire system with one command.
+
+### What to Build
+
+#### 8.1 Dockerfile (per service)
+Each service gets a multi-stage Dockerfile:
+```dockerfile
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+#### 8.2 Docker Compose (`docker-compose.yml`)
+Services:
+- `rabbitmq` — `rabbitmq:3.12-management`
+- `postgres-event`, `postgres-registration`, ..., `postgres-sponsor` (12 PostgreSQL instances)
+- `eureka-server`
+- `api-gateway` (depends on eureka)
+- All 12 business services (depend on their DB + eureka)
+
+Networks: `campus-network` (bridge)
+Volumes: One named volume per PostgreSQL instance
+
+#### 8.3 Environment configuration
+Each service's `application.yml` uses environment variables:
+```yaml
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/event_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+```
+
+### Test Criteria
+- [ ] `docker-compose up --build` starts all containers without error
+- [ ] All 14 services show `UP` in Eureka at `http://localhost:8761`
+- [ ] RabbitMQ UI accessible at `http://localhost:15672`
+- [ ] Full demo flow works end-to-end via `http://localhost:8080`
+- [ ] Stopping `event-service` container → registration returns circuit breaker response
+- [ ] Restarting `event-service` container → it re-registers in Eureka, system recovers
+
+---
+
+## Phase 9 — Kubernetes Deployment
+
+**Goal:** Full system deployable to Kubernetes cluster.
+
+### What to Build
+
+#### 9.1 Namespace + ConfigMap
+```
+k8s/
+├── namespace.yaml
+├── configmap.yaml          ← shared env vars (RabbitMQ host, Eureka URL)
+├── eureka/
+│   ├── deployment.yaml
+│   └── service.yaml
+├── gateway/
+│   ├── deployment.yaml
+│   └── service.yaml (LoadBalancer)
+└── services/
+    ├── event-service/
+    │   ├── deployment.yaml
+    │   ├── service.yaml
+    │   └── postgres-deployment.yaml
+    └── ... (same pattern for each service)
+```
+
+#### 9.2 Per-service Kubernetes resources
+Each service:
+- `Deployment` with 1 replica, liveness/readiness probes
+- `Service` (ClusterIP)
+- `Deployment` + `Service` for its PostgreSQL pod
+
+#### 9.3 Gateway exposed via LoadBalancer / NodePort
+
+### Failure Demo
+```bash
+# Kill a pod — Kubernetes restarts it
+kubectl delete pod <event-service-pod> -n campus-eventhub
+
+# Watch it come back
+kubectl get pods -n campus-eventhub -w
+```
+
+### Test Criteria
+- [ ] `kubectl apply -f k8s/` deploys all resources
+- [ ] All pods reach `Running` state
+- [ ] `kubectl get svc api-gateway` shows external IP / NodePort
+- [ ] Demo flow works through Kubernetes gateway
+- [ ] Kill a pod → pod restarts automatically (verify with `kubectl get pods -w`)
+- [ ] HPA demo (optional): scale registration-service under load
+
+---
+
+## Phase 10 — Frontend Dashboard (Optional)
+
+**Goal:** Simple UI for demo purposes showing the full flow visually.
+
+### Options
+
+**Option A: Thymeleaf (simpler)**
+- Add Thymeleaf templates to API Gateway or a dedicated frontend service
+- Server-side rendered pages, no separate build step
+
+**Option B: React (richer)**
+- Separate `frontend/` directory
+- Vite + React + Axios
+- Pages: Events list, Registration form, My Tickets, Attendance, My Certificates
+
+### Key Pages
+- `/events` — Browse events, view details, register
+- `/my-registrations` — Student's registrations + QR codes
+- `/attendance/{eventId}` — Organizer marks attendance
+- `/certificates` — Download certificates
+- `/feedback/{eventId}` — Submit feedback
+- `/leaderboard` — Competition results
+- `/admin` — Event management dashboard
+
+### Test Criteria
+- [ ] Full demo flow completable through browser without API client
+- [ ] QR code image renders on ticket page
+- [ ] Certificate download works from browser
+
+---
+
+## Development Rules
+
+1. **Test before moving on** — Every phase has explicit test criteria. Don't advance until all pass.
+2. **One DB per service** — Never share a database between services. No cross-schema queries.
+3. **Feign + Resilience4j always** — All synchronous inter-service calls use Feign with a circuit breaker.
+4. **Environment variables for config** — No hardcoded hosts/ports. Use `${VAR:default}` pattern.
+5. **Consistent port assignment** — Follow the port map in README. No conflicts.
+6. **Idempotent consumers** — RabbitMQ consumers must handle duplicate messages safely.
+7. **Health endpoints** — Every service exposes `/actuator/health` for container probes.
