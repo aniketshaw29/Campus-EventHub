@@ -10,6 +10,7 @@ A production-grade microservices application built with Java + Spring Boot for m
 | [Kubernetes Deployment](docs/KUBERNETES.md) | [Architecture](docs/ARCHITECTURE.md) |
 | [API Contracts](docs/API_CONTRACTS.md) | [Message Contracts](docs/MESSAGE_CONTRACTS.md) |
 | [Development Plan](docs/DEVELOPMENT_PLAN.md) | [Install Guide](docs/INSTALL.md) |
+| [Testing Guide](docs/TESTING.md) | [Index](docs/INDEX.md) |
 
 ---
 
@@ -236,10 +237,11 @@ See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) for the full phased plan.
 | 1 | ✅ Done | Eureka Server + API Gateway |
 | 2 | ✅ Done | Event Service (12 tests) + Venue Service (13 tests) |
 | 3 | ✅ Done | Registration Service (14 tests) + Feign + Resilience4j circuit breaker |
-| 4 | ✅ Done | Ticket Service (7 tests, ZXing QR) + Notification Service (9 tests) + RabbitMQ |
-| 5 | ✅ Done | Attendance Service (12 tests) + Certificate Service (10 tests, PDFBox PDF) |
-| 6 | ✅ Done | Feedback Service (12 tests) + Leaderboard Service (11 tests) + Announcement Service (10 tests) |
-| 7 | ✅ Done | Resource Service (11 tests, file upload/download) + Sponsor Service (12 tests, event linking) |
+| 4 | ✅ Done | Ticket Service (14 tests) + Notification Service (16 tests) + RabbitMQ |
+| 5 | ✅ Done | Attendance Service (21 tests) + Certificate Service (17 tests, PDFBox PDF) |
+| 6 | ✅ Done | Feedback Service (22 tests) + Leaderboard Service (22 tests) + Announcement Service (20 tests) |
+| 7 | ✅ Done | Resource Service (11 tests) + Sponsor Service (23 tests, event linking) |
 | 8 | ✅ Done | Docker Compose — 14 Dockerfiles, docker-compose.yml with 12 PostgreSQL DBs, RabbitMQ, all services, healthchecks, named volumes |
 | 9 | ✅ Done | Kubernetes — 17 manifests (namespace, configmap, RabbitMQ, Eureka, Gateway, 12 services each with own PostgreSQL PVC); `deploy.sh` + `teardown.sh` helper scripts |
 | 10 | ✅ Done | Frontend Dashboard — Vite + React 18 SPA; 9 pages (Events, EventDetail, Register, MyTickets, Attendance, Certificates, Feedback, Leaderboard, Admin); Docker + k8s included |
+| — | ✅ Done | Integration Tests — 72 additional tests across 8 services covering consumer paths, summary aggregation, idempotency, and service-layer wiring (207 total) |

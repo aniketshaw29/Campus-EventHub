@@ -163,25 +163,51 @@ Once everything is running:
 
 ## Running Tests
 
-Run all Java tests across every service:
+There are two test layers per service. Neither requires a running database, RabbitMQ, or Eureka — everything is in-process using H2.
+
+**Layer 1 — Application tests** (`*ApplicationTests.java`): full HTTP endpoint coverage via MockMvc.
+
+**Layer 2 — Integration tests** (`*IntegrationTest.java`): consumer-path tests (ticket, notification, certificate), service+repository wiring tests (feedback, leaderboard, announcement, attendance, sponsor).
+
+See [docs/TESTING.md](TESTING.md) for the complete guide.
+
+### Run everything
 
 ```bash
-mvn test
+./test-all.sh
 ```
 
-Run tests for a single service:
+### Useful flags
 
 ```bash
-cd event-service && mvn test
+./test-all.sh --fail-fast            # stop on first failure
+./test-all.sh --service event-service   # one service only
 ```
 
-Run frontend lint/type check (no test suite currently):
+### Single service with Maven
 
 ```bash
-cd frontend && npm run build   # fails fast on JSX errors
+mvn -f event-service/pom.xml test
 ```
 
-Tests use an H2 in-memory database and mock out Eureka, Feign clients, and RabbitMQ — no live infrastructure needed.
+### Only integration tests
+
+```bash
+mvn -f ticket-service/pom.xml test -Dtest="*IntegrationTest"
+```
+
+### Only application tests
+
+```bash
+mvn -f ticket-service/pom.xml test -Dtest="*ApplicationTests"
+```
+
+### Single test method
+
+```bash
+mvn -f feedback-service/pom.xml test \
+  -Dtest=FeedbackServiceIntegrationTest#summary_multipleRatings_avgCorrectlyComputed
+```
 
 ---
 

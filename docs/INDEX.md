@@ -24,6 +24,7 @@ Complete documentation for the Campus EventHub microservices platform.
 | [Message Contracts](MESSAGE_CONTRACTS.md) | RabbitMQ exchange, queue bindings, message payloads |
 | [API Contracts](API_CONTRACTS.md) | All HTTP endpoints, request/response shapes, status codes |
 | [Development Plan](DEVELOPMENT_PLAN.md) | Phased build plan, test criteria, progress status |
+| [Testing Guide](TESTING.md) | How to run tests, test layers explained, all test counts |
 
 ---
 
