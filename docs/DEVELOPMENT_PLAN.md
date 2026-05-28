@@ -18,7 +18,7 @@ Each phase is self-contained with a clear scope, implementation checklist, and t
 | 7 | ✅ DONE | Utility Services | Resource Upload, Sponsor | Supporting features complete |
 | 8 | ✅ DONE | Containerization | All services | docker-compose up brings everything up |
 | 9 | ✅ DONE | Kubernetes | All services | kubectl apply / deploy.sh deploys full system |
-| 10 | 🔲 TODO | Frontend Dashboard | React/Thymeleaf | End-to-end demo via UI |
+| 10 | ✅ DONE | Frontend Dashboard | React/Vite | End-to-end demo via UI at localhost:3000 |
 
 ---
 
@@ -613,34 +613,86 @@ kubectl get pods -n campus-eventhub --watch
 
 ---
 
-## Phase 10 — Frontend Dashboard (Optional)
+## Phase 10 — Frontend Dashboard ✅
 
-**Goal:** Simple UI for demo purposes showing the full flow visually.
+**Goal:** React SPA for end-to-end demo without an API client.
 
-### Options
+### What Was Built
 
-**Option A: Thymeleaf (simpler)**
-- Add Thymeleaf templates to API Gateway or a dedicated frontend service
-- Server-side rendered pages, no separate build step
+#### 10.1 Tech stack
+- **Vite + React 18** in `frontend/` directory
+- **react-router-dom v6** for SPA routing
+- **Axios** with a shared client interceptor for error unwrapping
+- **Nginx** (Alpine) for serving the production build inside Docker
+- No UI framework — pure CSS custom properties in `index.css`
 
-**Option B: React (richer)**
-- Separate `frontend/` directory
-- Vite + React + Axios
-- Pages: Events list, Registration form, My Tickets, Attendance, My Certificates
+#### 10.2 Structure
+```
+frontend/
+├── Dockerfile              ← Node build + nginx:alpine runtime
+├── nginx.conf              ← SPA fallback + /api proxy to api-gateway
+├── vite.config.js          ← dev proxy: /api → localhost:4069
+├── index.html
+└── src/
+    ├── main.jsx
+    ├── App.jsx             ← Router + all routes
+    ├── index.css           ← All styles (cards, forms, badges, tables, modal)
+    ├── context/
+    │   └── StudentContext.jsx  ← localStorage profile (studentId, name, email)
+    ├── api/                ← One file per service domain
+    │   ├── client.js       ← Axios instance + error interceptor
+    │   ├── events.js
+    │   ├── venues.js
+    │   ├── registrations.js
+    │   ├── attendance.js
+    │   ├── tickets.js
+    │   ├── certificates.js
+    │   ├── feedback.js
+    │   ├── leaderboard.js
+    │   ├── announcements.js
+    │   ├── notifications.js
+    │   └── sponsors.js
+    ├── components/
+    │   ├── Navbar.jsx      ← Links + profile modal
+    │   ├── Modal.jsx
+    │   ├── Spinner.jsx
+    │   ├── Alert.jsx
+    │   ├── QRImage.jsx     ← Renders base64 QR from ticket-service
+    │   ├── StatusBadge.jsx ← Color-coded badge for all status enums
+    │   └── EmptyState.jsx
+    └── pages/
+        ├── Events.jsx          ← Browse + filter by status, capacity bar
+        ├── EventDetail.jsx     ← Event info, venue, feedback summary, announcements
+        ├── Register.jsx        ← Registration form pre-filled from StudentContext
+        ├── MyRegistrations.jsx ← Cancel registrations
+        ├── MyTickets.jsx       ← QR code modal per ticket
+        ├── Attendance.jsx      ← Organizer marks attendance per event
+        ├── Certificates.jsx    ← Download PDF certificates
+        ├── Feedback.jsx        ← Star rating + all reviews
+        ├── Leaderboard.jsx     ← Podium (top 3) + full ranking table
+        └── Admin.jsx           ← 5-tab admin: Events, Venues, Announcements, Results, Sponsors
+```
 
-### Key Pages
-- `/events` — Browse events, view details, register
-- `/my-registrations` — Student's registrations + QR codes
-- `/attendance/{eventId}` — Organizer marks attendance
-- `/certificates` — Download certificates
-- `/feedback/{eventId}` — Submit feedback
-- `/leaderboard` — Competition results
-- `/admin` — Event management dashboard
+#### 10.3 Deployment
+- **Docker Compose:** `frontend` service on port `3000:80`; nginx proxies `/api` to `api-gateway:4069`
+- **Kubernetes:** `k8s/frontend/frontend.yaml` — Deployment + NodePort `30080`
+- `deploy.sh` builds the frontend Docker image and applies the manifest
+
+#### 10.4 Running locally (dev mode)
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:3000
+# Proxy: /api → http://localhost:4069 (gateway must be running)
+```
 
 ### Test Criteria
+- [x] `npm run build` succeeds without errors
+- [ ] Browse events, register, view QR ticket (requires running stack)
+- [ ] Mark attendance → certificate auto-generated (requires running stack)
+- [ ] Submit feedback → star rating appears in summary (requires running stack)
+- [ ] Admin tab: create event/venue, publish result, create announcement (requires running stack)
 - [ ] Full demo flow completable through browser without API client
-- [ ] QR code image renders on ticket page
-- [ ] Certificate download works from browser
 
 ---
 

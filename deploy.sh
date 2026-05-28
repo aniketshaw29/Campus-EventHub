@@ -23,6 +23,7 @@ SERVICES=(
   feedback-service
   leaderboard-service
   announcement-service
+  frontend
   resource-service
   sponsor-service
 )
@@ -164,7 +165,11 @@ for svc in "${ORDERED_SERVICES[@]}"; do
   ok "  Applied $svc"
 done
 
-# 7. Wait for gateway (after services so we don't block unnecessarily)
+# 7. Frontend
+apply "${K8S_BASE}/frontend/frontend.yaml"
+ok "  Applied frontend"
+
+# 8. Wait for gateway (after services so we don't block unnecessarily)
 log "Waiting for API Gateway ..."
 wait_for_deploy api-gateway 120s
 
@@ -173,6 +178,7 @@ ok "Deployment complete!"
 echo ""
 echo -e "${CYAN}── Access points ────────────────────────────────────────────────${NC}"
 echo ""
+echo "  Frontend (NodePort):     http://localhost:30080"
 echo "  API Gateway (NodePort):  http://localhost:30069"
 echo "  Eureka Dashboard:        kubectl port-forward -n $NAMESPACE svc/eureka-server 4070:4070"
 echo "                           then visit http://localhost:4070"

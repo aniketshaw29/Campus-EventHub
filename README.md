@@ -162,10 +162,11 @@ campus-eventhub/
 # Build all services
 mvn clean package -DskipTests
 
-# Start all infrastructure + services
+# Start entire stack (backend + frontend)
 docker-compose up --build
 
 # Access points
+# Frontend:      http://localhost:3000
 # API Gateway:   http://localhost:4069
 # Eureka UI:     http://localhost:4070
 # RabbitMQ UI:   http://localhost:15672  (guest/guest)
@@ -241,4 +242,4 @@ See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) for the full phased plan.
 | 7 | ✅ Done | Resource Service (11 tests, file upload/download) + Sponsor Service (12 tests, event linking) |
 | 8 | ✅ Done | Docker Compose — 14 Dockerfiles, docker-compose.yml with 12 PostgreSQL DBs, RabbitMQ, all services, healthchecks, named volumes |
 | 9 | ✅ Done | Kubernetes — 17 manifests (namespace, configmap, RabbitMQ, Eureka, Gateway, 12 services each with own PostgreSQL PVC); `deploy.sh` + `teardown.sh` helper scripts |
-| 10 | 🔲 | Frontend Dashboard |
+| 10 | ✅ Done | Frontend Dashboard — Vite + React 18 SPA; 9 pages (Events, EventDetail, Register, MyTickets, Attendance, Certificates, Feedback, Leaderboard, Admin); Docker + k8s included |

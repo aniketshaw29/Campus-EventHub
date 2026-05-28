@@ -559,3 +559,16 @@ services:
         condition: service_healthy
     networks:
       - campus-network
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - campus-network
