@@ -53,7 +53,7 @@ public class EventController {
 
     @PutMapping("/{id}/capacity")
     public ResponseEntity<Map<String, Integer>> updateCapacity(@PathVariable Long id,
-                                                               @RequestBody CapacityUpdateRequest request) {
+                                                               @Valid @RequestBody CapacityUpdateRequest request) {
         return ResponseEntity.ok(eventService.updateCapacity(id, request));
     }
 }

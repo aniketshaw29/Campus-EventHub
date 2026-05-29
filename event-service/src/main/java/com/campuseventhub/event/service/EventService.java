@@ -65,9 +65,12 @@ public class EventService {
         findOrThrow(id);
         eventRepository.deleteById(id);
     }
-
+ 
     @Transactional
     public Map<String, Integer> updateCapacity(Long id, CapacityUpdateRequest request) {
+        if (request.getDelta() == 0) {
+            throw new IllegalArgumentException("delta must be +1 or -1");
+        }
         Event event = findOrThrow(id);
         if (request.getDelta() > 0 && event.getCurrentRegistrations() >= event.getMaxCapacity()) {
             throw new EventCapacityFullException(id);
@@ -76,7 +79,6 @@ public class EventService {
         if (updated == 0) {
             throw new EventCapacityFullException(id);
         }
-        // Re-fetch to get updated value
         int newCount = findOrThrow(id).getCurrentRegistrations();
         return Map.of("currentRegistrations", newCount);
     }

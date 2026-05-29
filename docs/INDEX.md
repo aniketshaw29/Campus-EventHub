@@ -20,6 +20,7 @@ Complete documentation for the Campus EventHub microservices platform.
 
 | Document | Description |
 |----------|-------------|
+| [Code Reading Guide](CODE_READING_GUIDE.md) | Where to start reading the code — step-by-step walkthrough |
 | [Architecture Reference](ARCHITECTURE.md) | Principles, data models, Feign patterns, RabbitMQ topology |
 | [Message Contracts](MESSAGE_CONTRACTS.md) | RabbitMQ exchange, queue bindings, message payloads |
 | [API Contracts](API_CONTRACTS.md) | All HTTP endpoints, request/response shapes, status codes |

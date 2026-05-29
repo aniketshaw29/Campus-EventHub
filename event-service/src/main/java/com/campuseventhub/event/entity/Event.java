@@ -9,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
+
 @Table(name = "events")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Event {
