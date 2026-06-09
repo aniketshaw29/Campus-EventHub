@@ -638,3 +638,5 @@ All services return errors in this format:
 | 409 | Conflict — duplicate or capacity full |
 | 413 | Payload Too Large — file upload limit |
 | 503 | Service Unavailable — circuit breaker open |
+
+<!-- verified error codes against implementation -->
