@@ -52,29 +52,34 @@ public class CertificateService {
                 });
     }
 
+    @Transactional(readOnly = true)
     public CertificateResponse getCertificateById(Long id) {
         return certificateRepository.findById(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new CertificateNotFoundException("Certificate not found: " + id));
     }
 
+    @Transactional(readOnly = true)
     public CertificateResponse getCertificateByNumber(String certNumber) {
         return certificateRepository.findByCertificateNumber(certNumber)
                 .map(this::toResponse)
                 .orElseThrow(() -> new CertificateNotFoundException("Certificate not found: " + certNumber));
     }
 
+    @Transactional(readOnly = true)
     public CertificateResponse getCertificateByRegistrationId(Long registrationId) {
         return certificateRepository.findByRegistrationId(registrationId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new CertificateNotFoundException("Certificate not found for registration: " + registrationId));
     }
 
+    @Transactional(readOnly = true)
     public List<CertificateResponse> getCertificatesByStudent(String studentId) {
         return certificateRepository.findByStudentId(studentId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public byte[] getPdfData(Long id) {
         Certificate cert = certificateRepository.findById(id)
                 .orElseThrow(() -> new CertificateNotFoundException("Certificate not found: " + id));

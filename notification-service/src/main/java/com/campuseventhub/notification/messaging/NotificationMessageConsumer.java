@@ -5,7 +5,10 @@ import com.campuseventhub.notification.entity.NotificationType;
 import com.campuseventhub.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -18,13 +21,14 @@ public class NotificationMessageConsumer {
     private final NotificationService notificationService;
 
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_QUEUE)
-    public void handleMessage(IncomingMessage message) {
-        log.info("Received message type={}", message.getEventType());
-        switch (message.getEventType()) {
-            case "registration.completed" -> handleRegistration(message.getPayload());
-            case "announcement.created"   -> handleAnnouncement(message.getPayload());
-            case "results.published"      -> handleResults(message.getPayload());
-            default -> log.warn("Unknown event type: {}", message.getEventType());
+    public void handleMessage(Map<String, Object> payload,
+                              @Header(AmqpHeaders.RECEIVED_ROUTING_KEY) String routingKey) {
+        log.info("Received message routingKey={}", routingKey);
+        switch (routingKey) {
+            case "registration.completed" -> handleRegistration(payload);
+            case "announcement.created"   -> handleAnnouncement(payload);
+            case "results.published"      -> handleResults(payload);
+            default -> log.warn("Unknown routing key: {}", routingKey);
         }
     }
 

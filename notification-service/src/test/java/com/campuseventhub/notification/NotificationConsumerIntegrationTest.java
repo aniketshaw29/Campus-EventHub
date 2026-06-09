@@ -1,7 +1,6 @@
 package com.campuseventhub.notification;
 
 import com.campuseventhub.notification.entity.NotificationType;
-import com.campuseventhub.notification.messaging.IncomingMessage;
 import com.campuseventhub.notification.messaging.NotificationMessageConsumer;
 import com.campuseventhub.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.*;
@@ -14,7 +13,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,15 +46,13 @@ class NotificationConsumerIntegrationTest {
 
     @Test @Order(1)
     void registrationCompleted_savesNotificationWithCorrectType() {
-        consumer.handleMessage(IncomingMessage.builder()
-                .eventType("registration.completed")
-                .timestamp(LocalDateTime.now())
-                .payload(Map.of(
+        consumer.handleMessage(
+                Map.of(
                         "studentId",    STUDENT_ID,
                         "studentEmail", STUDENT_EMAIL,
                         "eventTitle",   EVENT_TITLE
-                ))
-                .build());
+                ),
+                "registration.completed");
 
         var notifications = notificationRepository.findByRecipientId(STUDENT_ID);
         assertThat(notifications).hasSize(1);
@@ -78,15 +74,13 @@ class NotificationConsumerIntegrationTest {
     @Test @Order(3)
     void registrationCompleted_multipleDeliveries_createMultipleNotifications() {
         // Deliver for a second student
-        consumer.handleMessage(IncomingMessage.builder()
-                .eventType("registration.completed")
-                .timestamp(LocalDateTime.now())
-                .payload(Map.of(
+        consumer.handleMessage(
+                Map.of(
                         "studentId",    "STU-NOT-002",
                         "studentEmail", "other@college.edu",
                         "eventTitle",   "Second Event"
-                ))
-                .build());
+                ),
+                "registration.completed");
 
         assertThat(notificationRepository.findByRecipientId("STU-NOT-002")).hasSize(1);
         // Original student's notification still there
@@ -97,14 +91,12 @@ class NotificationConsumerIntegrationTest {
 
     @Test @Order(4)
     void announcementCreated_savesAnnouncementNotification() {
-        consumer.handleMessage(IncomingMessage.builder()
-                .eventType("announcement.created")
-                .timestamp(LocalDateTime.now())
-                .payload(Map.of(
+        consumer.handleMessage(
+                Map.of(
                         "title",   "Campus Holiday Notice",
                         "content", "Campus will be closed next Monday."
-                ))
-                .build());
+                ),
+                "announcement.created");
 
         var byType = notificationRepository.findByType(NotificationType.ANNOUNCEMENT);
         assertThat(byType).isNotEmpty();
@@ -124,11 +116,9 @@ class NotificationConsumerIntegrationTest {
 
     @Test @Order(6)
     void resultsPublished_savesResultNotification() {
-        consumer.handleMessage(IncomingMessage.builder()
-                .eventType("results.published")
-                .timestamp(LocalDateTime.now())
-                .payload(Map.of("eventTitle", "Hackathon 2026"))
-                .build());
+        consumer.handleMessage(
+                Map.of("eventTitle", "Hackathon 2026"),
+                "results.published");
 
         var byType = notificationRepository.findByType(NotificationType.RESULT);
         assertThat(byType).isNotEmpty();
@@ -141,11 +131,9 @@ class NotificationConsumerIntegrationTest {
     void unknownEventType_doesNotPersistAnything() {
         long before = notificationRepository.count();
 
-        consumer.handleMessage(IncomingMessage.builder()
-                .eventType("some.unknown.event")
-                .timestamp(LocalDateTime.now())
-                .payload(Map.of("foo", "bar"))
-                .build());
+        consumer.handleMessage(
+                Map.of("foo", "bar"),
+                "some.unknown.event");
 
         assertThat(notificationRepository.count()).isEqualTo(before);
     }
